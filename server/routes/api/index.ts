@@ -1,6 +1,8 @@
 import express from 'express';
 import passport from 'passport';
 
+import {contentTokenSchema} from '@shared/schema/api/torrents';
+
 import type {FloodSettings} from '@shared/types/FloodSettings';
 import type {HistorySnapshot} from '@shared/constants/historySnapshotTypes';
 import type {NotificationFetchOptions} from '@shared/types/Notification';
@@ -12,6 +14,7 @@ import clientRoutes from './client';
 import clientActivityStream from '../../middleware/clientActivityStream';
 import eventStream from '../../middleware/eventStream';
 import feedMonitorRoutes from './feed-monitor';
+import {getAuthToken, verifyToken} from '../../util/authUtil';
 import {getDirectoryList} from '../../util/fileUtil';
 import {getResponseFn} from '../../util/ajaxUtil';
 import torrentsRoutes from './torrents';
@@ -19,6 +22,47 @@ import torrentsRoutes from './torrents';
 const router = express.Router();
 
 router.use('/auth', authRoutes);
+
+// Special routes that may bypass authentication when conditions matched
+
+/**
+ * GET /api/torrents/{hash}/contents/{indices}/data
+ * @summary Gets downloaded data of contents of a torrent. Allows unauthenticated
+ *          access if a valid content token is found in the query.
+ * @see torrents.ts
+ */
+router.get<{hash: string; indices: string}, unknown, unknown, {token: string}>(
+  '/torrents/:hash/contents/:indices/data',
+  async (req, _res, next) => {
+    const {token} = req.query;
+
+    if (typeof token === 'string' && token !== '') {
+      const payload = await verifyToken(token).catch(() => undefined);
+
+      if (payload != null) {
+        const parsedResult = contentTokenSchema.safeParse(payload);
+
+        if (parsedResult.success) {
+          const {username, hash: authorizedHash, indices: authorizedIndices} = parsedResult.data;
+
+          if (
+            typeof username === 'string' &&
+            typeof authorizedHash === 'string' &&
+            typeof authorizedIndices === 'string'
+          ) {
+            const {hash: requestedHash, indices: requestedIndices} = req.params;
+
+            if (requestedHash === authorizedHash && requestedIndices === authorizedIndices) {
+              req.cookies = {jwt: getAuthToken(username)};
+            }
+          }
+        }
+      }
+    }
+
+    next();
+  },
+);
 
 // All subsequent routes need authentication
 router.use('/', passport.authenticate('jwt', {session: false}), appendUserServices);
