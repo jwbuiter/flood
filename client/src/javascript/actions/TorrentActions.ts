@@ -140,15 +140,15 @@ const TorrentActions = {
         () => null,
       ),
 
-  getTorrentContentsDataPermalink: (hash: TorrentProperties['hash'], indices: number[]): Promise<string> =>
-    axios
-      .get(`${ConfigStore.baseURI}api/torrents/${hash}/contents/${indices.join(',')}/token`)
+  getTorrentContentsDataPermalink: (hash: TorrentProperties['hash'], indices: number[] | 'all'): Promise<string> => {
+    const indexList = typeof indices === 'string' ? 'all' : indices.join(',');
+    return axios
+      .get(`${ConfigStore.baseURI}api/torrents/${hash}/contents/${indexList}/token`)
       .then(
         (res) =>
-          `${window.location.protocol}//${window.location.host}${
-            ConfigStore.baseURI
-          }api/torrents/${hash}/contents/${indices.join(',')}/data?token=${res.data}`,
-      ),
+          `${window.location.protocol}//${window.location.host}${ConfigStore.baseURI}api/torrents/${hash}/contents/${indexList}/data?token=${res.data}`,
+      );
+  },
 
   moveTorrents: (options: MoveTorrentsOptions) =>
     axios

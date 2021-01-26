@@ -710,17 +710,6 @@ router.get<{hash: string; indices: string}, unknown, unknown, {token: string}>(
   (req, res) => {
     const {hash, indices: stringIndices} = req.params;
 
-    if (req.query.token == null) {
-      res.redirect(
-        `?token=${getToken({
-          username: req.user?.username,
-          hash,
-          indices: stringIndices,
-        })}`,
-      );
-      return;
-    }
-
     const selectedTorrent = req.services?.torrentService.getTorrent(hash);
     if (!selectedTorrent) {
       res.status(404).json({error: 'Torrent not found.'});

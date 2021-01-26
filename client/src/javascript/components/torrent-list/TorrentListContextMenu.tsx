@@ -119,13 +119,13 @@ const getContextMenuItems = (torrent: TorrentProperties): Array<ContextMenuItem>
       type: 'action',
       action: 'downloadContents',
       label: TorrentContextMenuActions.downloadContents.id,
-      clickHandler: (e) => {
+      clickHandler: async (e) => {
         e.preventDefault();
 
         const link = document.createElement('a');
 
         link.download = '';
-        link.href = `${ConfigStore.baseURI}api/torrents/${getLastSelectedTorrent()}/contents/all/data`;
+        link.href = await TorrentActions.getTorrentContentsDataPermalink(getLastSelectedTorrent(), 'all');
         link.style.display = 'none';
 
         document.body.appendChild(link);
